@@ -16,8 +16,8 @@ static constexpr bn::fixed MAX_X = HALF_SCREEN_WIDTH;
 
 // Set max/min y position to be the edges of the display
 static constexpr int HALF_SCREEN_HEIGHT = bn::display::height() / 2;
-static constexpr bn::fixed MIN_Y = -HALF_SCREEN_WIDTH;
-static constexpr bn::fixed MAX_Y = HALF_SCREEN_WIDTH;
+static constexpr bn::fixed MIN_Y = -HALF_SCREEN_HEIGHT;
+static constexpr bn::fixed MAX_Y = HALF_SCREEN_HEIGHT;
 
 // Starting speed of a bouncer
 static constexpr bn::fixed BASE_SPEED = 2;
@@ -29,19 +29,23 @@ class Bouncer{
     public:
         bn::sprite_ptr sprite;
         bn::fixed x_speed;
+        bn::fixed y_speed;
 
-        Bouncer(bn::fixed x_start, bn::fixed y_start) : 
+        Bouncer(bn::fixed x_start, bn::fixed y_start, bn::fixed x_random_speed, bn::fixed y_random_speed) : 
         sprite(bn::sprite_items::dot.create_sprite(x_start, y_start)), 
-        x_speed(BASE_SPEED){
+        x_speed(x_random_speed),
+        y_speed(y_random_speed){
         
         }
 
         void update(){
 
             bn::fixed x = sprite.x();
+            bn::fixed y = sprite.y();
 
-            // Update x position by adding speed
+            // Update x and y position by adding speed
             x += x_speed;
+            y += y_speed;
 
             // If we've gone off the screen on the right
             if(x > MAX_X) {
@@ -56,34 +60,52 @@ class Bouncer{
                 x_speed *= -1;
             }
 
+            // If we've gone off the screen on the bottom
+            if(y > MAX_Y) {
+                // Snap back to screen and reverse direction
+                y = MAX_Y;
+                y_speed *= -1;
+            }
+            
+            // If we've gone off the screen on the top
+            if(y < MIN_Y) {
+                // Snap back to screen and reverse direction
+                y = MIN_Y;
+                y_speed *= -1;
+            }
+
             sprite.set_x(x);
+            sprite.set_y(y);
         }
 
     private:
 };
 
-bn::fixed average_x(bn::vector<bn::sprite_ptr, MAX_BOUNCERS>&sprites){
+bn::fixed average_x(bn::vector<Bouncer, MAX_BOUNCERS>&bouncers){
     // Add all x positions together
     bn::fixed x_sum = 0;
-    for(bn::sprite_ptr sprite : sprites) {
-        x_sum += sprite.x();
+    for(const Bouncer& b : bouncers) {
+        x_sum += b.sprite.x();
     }
 
     bn::fixed x_average= x_sum;
 
     // Only divide if we have 1 or more
     // Prevents division by 0
-    if(sprites.size() > 0) {
-        x_average /= sprites.size();
+    if(bouncers.size() > 0) {
+        x_average /= bouncers.size();
     }
     
     return x_average;
 }
 
-void add_bouncer(bn::vector<Bouncer, MAX_BOUNCERS>&bouncers, bn::fixed start_x, bn::fixed start_y){
+void add_bouncer(bn::vector<Bouncer, MAX_BOUNCERS>&bouncers, bn::fixed start_x, bn::fixed start_y, 
+bn::random& random) {
     // Only add if we're below the maximum
     if(bouncers.size() < bouncers.max_size()) {
-        bouncers.push_back(Bouncer(start_x, start_y));
+        bn::fixed x_speed = random.get_int(-2, 2);
+        bn::fixed y_speed = random.get_int(-2, 2);
+        bouncers.push_back(Bouncer(start_x, start_y, x_speed, y_speed));
     }
 
 }
@@ -99,19 +121,27 @@ int main() {
     bn::vector<Bouncer, MAX_BOUNCERS> bouncers = {};
 
     bn::fixed y_spawn = 0;
-
+    bn::random random;
 
     while(true) {
         // if A is pressed add a new bouncer
         if(bn::keypad::a_pressed()) {
-            add_bouncer(bouncers, 0, y_spawn);
+            add_bouncer(bouncers, 0, y_spawn, random);
         }
 
-        // // if B is pressed print the average to the console
-        // if(bn::keypad::b_pressed()) {
-        //     bn::fixed x_average = average_x(sprites);
-        //     BN_LOG("Average x: ", x_average);
-        // }
+        // if B is pressed print the average to the console
+        if(bn::keypad::b_pressed()) {
+            bn::fixed x_average = average_x(bouncers);
+            BN_LOG("Average x: ", x_average);
+        }
+
+        // Extension - When Enter pressed it speeds all bouncers up
+        if(bn::keypad::start_pressed()) {
+            for(Bouncer& b : bouncers) {
+                b.x_speed *= 2;
+                b.y_speed *= 2;
+            }
+        }
 
         for(Bouncer& b : bouncers){
             b.update();

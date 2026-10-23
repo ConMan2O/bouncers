@@ -1,4 +1,3 @@
-# Bouncers
-An exercise to learn about functions and classes.
+![Gif of final gameplay](./Game_GIF.gif)
 
-Please find instructions in [instructions.md](instructions.md).
+In this game you can spawn balls by pressing "A" or "x" on keyboard. This spawns balls in random spots, going in random directions. You can press "start" or "enter" on keyboard which will infinitely speed the balls up. The balls will continue to bounce off the walls.
